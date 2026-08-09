@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+attendance.db
+dataset/*
+!dataset/.gitkeep
+trainer/*
+!trainer/.gitkeep
+.idea/
