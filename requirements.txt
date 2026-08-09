@@ -2,5 +2,3 @@ Flask==3.0.3
 gunicorn==22.0.0
 opencv-contrib-python-headless==4.10.0.84
 numpy==1.26.4
-Pillow==10.4.0
-pandas==2.2.2
