@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Register Student{% endblock %}
+{% block content %}
+<h1>Register New Student</h1>
+<p class="subtitle">Fill in the details, then capture your face using the webcam below.</p>
+
+<div class="register-grid">
+    <div class="form-box">
+        <label>Full Name</label>
+        <input type="text" id="name" placeholder="e.g. Sharshti Singhai">
+
+        <label>Roll Number</label>
+        <input type="text" id="roll_no" placeholder="e.g. 23100BTCSBS14699">
+
+        <label>Course / Branch</label>
+        <input type="text" id="course" placeholder="e.g. B-Tech CS">
+
+        <label>Email (optional)</label>
+        <input type="email" id="email" placeholder="e.g. name@example.com">
+
+        <button id="saveDetailsBtn" onclick="saveStudentDetails()">Save Details & Start Camera</button>
+        <p id="detailsStatus" class="status-msg"></p>
+    </div>
+
+    <div class="camera-box scanning">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+        <div class="progress-bar" style="width: 100%; height: 14px; margin-top: 12px;">
+            <div id="captureProgress" class="progress-fill" style="width: 0%;"></div>
+        </div>
+        <p id="captureStatus" class="status-msg">Fill in your details first, then start the camera.</p>
+        <button id="startCaptureBtn" onclick="startCapture()" disabled>Start Face Capture (50 samples)</button>
+    </div>
+</div>
+
+<script>
+let studentId = null;
+let rollNo = null;
+let stream = null;
+const TOTAL_SAMPLES = 50;
+
+async function saveStudentDetails() {
+    const name = document.getElementById('name').value.trim();
+    const roll_no = document.getElementById('roll_no').value.trim();
+    const course = document.getElementById('course').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const statusEl = document.getElementById('detailsStatus');
+
+    if (!name || !roll_no) {
+        statusEl.textContent = "Name and Roll Number are required.";
+        statusEl.className = "status-msg error";
+        return;
+    }
+
+    const res = await fetch('/api/register_student', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name, roll_no, course, email})
+    });
+    const result = await res.json();
+
+    if (!result.success) {
+        statusEl.textContent = result.message;
+        statusEl.className = "status-msg error";
+        return;
+    }
+
+    studentId = result.student_id;
+    rollNo = result.roll_no;
+    statusEl.textContent = "Details saved! Now start the camera.";
+    statusEl.className = "status-msg success";
+
+    document.getElementById('startCaptureBtn').disabled = false;
+    await startCamera();
+}
+
+async function startCamera() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        document.getElementById('video').srcObject = stream;
+    } catch (err) {
+        document.getElementById('captureStatus').textContent = "Could not access camera: " + err.message;
+        document.getElementById('captureStatus').className = "status-msg error";
+    }
+}
+
+async function startCapture() {
+    if (!studentId) return;
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const statusEl = document.getElementById('captureStatus');
+    const progressEl = document.getElementById('captureProgress');
+    document.getElementById('startCaptureBtn').disabled = true;
+
+    let captured = 0;
+    let attempts = 0;
+    const maxAttempts = TOTAL_SAMPLES * 4; // allow retries for frames with no face
+
+    while (captured < TOTAL_SAMPLES && attempts < maxAttempts) {
+        attempts++;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+        const res = await fetch('/api/capture_face', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                image: imageData,
+                student_id: studentId,
+                roll_no: rollNo,
+                sample_index: captured + 1
+            })
+        });
+        const result = await res.json();
+
+        if (result.success) {
+            captured++;
+            progressEl.style.width = Math.round((captured / TOTAL_SAMPLES) * 100) + "%";
+            statusEl.textContent = `Captured ${captured}/${TOTAL_SAMPLES} samples...`;
+            statusEl.className = "status-msg";
+        } else {
+            statusEl.textContent = "Look at the camera... no face detected in last frame.";
+        }
+        await new Promise(r => setTimeout(r, 150));
+    }
+
+    if (captured >= TOTAL_SAMPLES) {
+        statusEl.textContent = "Done! 50 samples captured. Go to 'Train Model' next.";
+        statusEl.className = "status-msg success";
+    } else {
+        statusEl.textContent = `Stopped after ${captured} samples. You can go to 'Train Model' now, or refresh to try again.`;
+        statusEl.className = "status-msg error";
+    }
+
+    if (stream) stream.getTracks().forEach(t => t.stop());
+}
+</script>
+{% endblock %}
