@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Home - Smart Attendance{% endblock %}
+{% block content %}
+<h1>Welcome to the AI Smart Attendance & Student Monitoring System</h1>
+<p class="subtitle">Face Recognition based automated attendance and monitoring dashboard.</p>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <h2>{{ total_students }}</h2>
+        <p>Total Registered Students</p>
+    </div>
+    <div class="stat-card highlight">
+        <h2>{{ present_today }}</h2>
+        <p>Present Today ({{ today }})</p>
+    </div>
+</div>
+
+<div class="info-box">
+    <h3>How this system works</h3>
+    <ol>
+        <li><b>Register a student:</b> go to <a href="{{ url_for('register_page') }}">Register Student</a> — fill in details and capture your face via webcam, right in the browser.</li>
+        <li><b>Train the model:</b> go to <a href="{{ url_for('train_page') }}">Train Model</a> and click the button (do this after registering students).</li>
+        <li><b>Take attendance:</b> go to <a href="{{ url_for('take_attendance_page') }}">Take Attendance</a> — your face is recognized live and attendance is marked automatically.</li>
+        <li><b>View reports:</b> use the navigation above to see Students, Attendance, and the Monitoring Dashboard.</li>
+    </ol>
+</div>
+{% endblock %}

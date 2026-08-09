@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Students - Smart Attendance{% endblock %}
+{% block content %}
+<h1>Registered Students</h1>
+
+{% if students %}
+<div class="filter-form">
+    <input type="text" id="searchBox" placeholder="Search by name or roll number..." style="flex:1; max-width:320px;" onkeyup="filterStudents()">
+</div>
+
+<table class="data-table" id="studentsTable">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Roll No</th>
+            <th>Course</th>
+            <th>Email</th>
+            <th>Registered On</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in students %}
+        <tr>
+            <td>{{ s.name }}</td>
+            <td class="mono">{{ s.roll_no }}</td>
+            <td>{{ s.course }}</td>
+            <td>{{ s.email }}</td>
+            <td class="mono">{{ s.registered_on }}</td>
+            <td style="white-space:nowrap;">
+                <a href="{{ url_for('student_detail', student_id=s.id) }}">View</a>
+                &nbsp;|&nbsp;
+                <a href="{{ url_for('student_edit', student_id=s.id) }}">Edit</a>
+                &nbsp;|&nbsp;
+                <form method="POST" action="{{ url_for('student_delete', student_id=s.id) }}" style="display:inline" onsubmit="return confirm('Delete {{ s.name }}? This also removes their attendance history.');">
+                    <button type="submit" style="margin:0; padding:2px 8px; font-size:0.8rem; background:var(--danger);">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+function filterStudents() {
+    const query = document.getElementById('searchBox').value.toLowerCase();
+    const rows = document.querySelectorAll('#studentsTable tbody tr');
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(query) ? '' : 'none';
+    });
+}
+</script>
+{% else %}
+<p>No students registered yet. Go to <a href="{{ url_for('register_page') }}">Register Student</a> to add one.</p>
+{% endif %}
+{% endblock %}

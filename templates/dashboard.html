@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Monitoring Dashboard - Smart Attendance{% endblock %}
+{% block content %}
+<h1>Student Monitoring Dashboard</h1>
+<p class="subtitle">Automated tracking of attendance percentage. Students below 75% are flagged.</p>
+
+<div class="filter-form" style="margin-bottom: 24px;">
+    <a href="{{ url_for('export_attendance_csv') }}"><button type="button">Export Attendance (CSV)</button></a>
+    <button type="button" onclick="sendAlerts()" id="alertBtn">Send Low Attendance Alerts</button>
+    <span id="alertStatus" class="status-msg"></span>
+</div>
+
+{% if low_attendance_count > 0 %}
+<div class="alert-box">
+    ⚠️ {{ low_attendance_count }} student(s) have attendance below 75%. Please review below.
+</div>
+{% endif %}
+
+{% if chart_labels %}
+<div class="info-box" style="margin-bottom: 24px;">
+    <h3>Daily Attendance Trend</h3>
+    <canvas id="trendChart" height="90"></canvas>
+</div>
+{% endif %}
+
+{% if summary %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Roll No</th>
+            <th>Course</th>
+            <th>Present Days</th>
+            <th>Total Days</th>
+            <th>Attendance %</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in summary %}
+        <tr class="{{ 'low-row' if s.low_attendance else '' }}">
+            <td>{{ s.name }}</td>
+            <td class="mono">{{ s.roll_no }}</td>
+            <td>{{ s.course }}</td>
+            <td>{{ s.present_days }}</td>
+            <td>{{ s.total_days }}</td>
+            <td>
+                <div class="progress-bar">
+                    <div class="progress-fill {{ 'low' if s.low_attendance else '' }}" style="width: {{ s.percentage }}%;"></div>
+                </div>
+                {{ s.percentage }}%
+            </td>
+            <td>
+                {% if s.low_attendance %}
+                <span class="badge absent">Low Attendance</span>
+                {% else %}
+                <span class="badge present">Good Standing</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No data available yet.</p>
+{% endif %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+{% if chart_labels %}
+const ctx = document.getElementById('trendChart');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ chart_labels | tojson }},
+        datasets: [{
+            label: 'Students Present',
+            data: {{ chart_values | tojson }},
+            borderColor: '#14E0C4',
+            backgroundColor: 'rgba(20, 224, 196, 0.12)',
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: '#0F1229'
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+});
+{% endif %}
+
+async function sendAlerts() {
+    const btn = document.getElementById('alertBtn');
+    const statusEl = document.getElementById('alertStatus');
+    btn.disabled = true;
+    statusEl.textContent = "Sending...";
+    statusEl.className = "status-msg";
+
+    const res = await fetch('/api/send_alerts', { method: 'POST' });
+    const result = await res.json();
+
+    if (result.sent > 0) {
+        statusEl.textContent = `Sent ${result.sent} of ${result.total_low} alert(s).`;
+        statusEl.className = "status-msg success";
+    } else if (result.total_low === 0) {
+        statusEl.textContent = "No students below 75% right now.";
+        statusEl.className = "status-msg";
+    } else {
+        statusEl.textContent = "Could not send emails. " + (result.failed[0] || "Check config.py email settings.");
+        statusEl.className = "status-msg error";
+    }
+    btn.disabled = false;
+}
+</script>
+{% endblock %}

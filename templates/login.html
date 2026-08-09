@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Admin Login{% endblock %}
+{% block content %}
+<div style="max-width: 400px; margin: 40px auto;">
+    <h1>Admin Login</h1>
+    <p class="subtitle">Sign in to register students, train the model, and view the monitoring dashboard.</p>
+
+    <div class="form-box">
+        {% if error %}
+        <p class="status-msg error">{{ error }}</p>
+        {% endif %}
+        <form method="POST">
+            <label>Username</label>
+            <input type="text" name="username" required autofocus>
+
+            <label>Password</label>
+            <input type="password" name="password" required>
+
+            <button type="submit">Sign In</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
